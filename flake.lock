@@ -1,0 +1,50 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1776255774,
+        "narHash": "sha256-psVTpH6PK3q1htMJpmdz1hLF5pQgEshu7gQWgKO6t6Y=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "566acc07c54dc807f91625bb286cb9b321b5f42a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "566acc07c54dc807f91625bb286cb9b321b5f42a",
+        "type": "github"
+      }
+    },
+    "nixray": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1793372792,
+        "narHash": "sha256-HhltT+mdbVdo8vw+uk7INsp03JHXuNC6WzhNhsCjjpI=",
+        "owner": "flakesonnix",
+        "repo": "nixray",
+        "rev": "b4b6a26d1b7ac1d9d9963d294db9174f7a276087",
+        "type": "github"
+      },
+      "original": {
+        "owner": "flakesonnix",
+        "repo": "nixray",
+        "rev": "b4b6a26d1b7ac1d9d9963d294db9174f7a276087",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": [
+          "nixray",
+          "nixpkgs"
+        ],
+        "nixray": "nixray"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
