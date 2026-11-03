@@ -46,6 +46,12 @@ let
     in builtins.all (x: builtins.all (post: post.y >= 0 && post.y + builtins.length post.pixels <= p.height
       && builtins.all (c: c >= 0 && c <= 255) post.pixels) (builtins.elemAt p.columns x)) (m.range p.width);
   checks = {
+    assetBuildDoesNotDecodeDuringFlakeEvaluation = import ./build-evaluation.nix;
+    mathnixProvidesTrig = m.sin (m.pi / 2) == builtins.math.sin (builtins.math.pi / 2)
+      && m.cos 0 == builtins.math.cos 0;
+    mathnixProvidesAtan2 = near (m.atan2 1 0) (m.pi / 2) && near (m.atan2 0 (-1)) m.pi;
+    mathnixHypotAvoidsOverflow = m.length 1.0e200 1.0e200 > 1.0e200;
+    integerBoundsKeepTheirTypes = builtins.isInt (m.clamp 0 4 8) && builtins.isInt (m.min 0 2);
     originalIwadSize = wad.b.size == 4196020;
     originalDirectory = builtins.length wad.directory == 1264;
     originalAllNineMaps = builtins.map (x: x.name) wad.maps == [ "E1M1" "E1M2" "E1M3" "E1M4" "E1M5" "E1M6" "E1M7" "E1M8" "E1M9" ];

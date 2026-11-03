@@ -43,10 +43,6 @@ let
         value = { inherit name; flip = true; };
       } ])
   ) spriteLumps);
-  atan2 = y: x:
-    let a = m.abs x; b = m.abs y; ratio = if a + b == 0 then 0 else (a - b) / (a + b);
-        angle = m.pi / 4 - (m.pi / 4 * ratio - ratio * (m.abs ratio - 1) * (0.2447 + 0.0663 * m.abs ratio));
-    in (if y < 0 then -1 else 1) * (if x < 0 then m.pi - angle else angle);
 in state:
 let
   p = state.player;
@@ -77,7 +73,7 @@ let
         else if state.tic - actor.attackTic < 12 && monster then (if builtins.elem actor.type [ 3004 9 ] then "F" else "G")
         else if actor.alert && monster then builtins.substring (builtins.floor (m.mod (builtins.div state.tic 8) 4)) 1 "ABCD"
         else "A";
-      relative = atan2 (p.y - actor.y) (p.x - actor.x) - actor.moveAngle;
+      relative = m.atan2 (p.y - actor.y) (p.x - actor.x) - actor.moveAngle;
       rotation = 1 + int (m.mod (int ((relative + m.pi / 8) / (m.tau / 8))) 8);
       requested = if !monster then info.sprite else "${info.sprite}${frame}${toString rotation}";
       chosen = variants.${requested} or variants.${"${info.sprite}${frame}0"} or

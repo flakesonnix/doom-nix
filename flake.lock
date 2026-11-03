@@ -1,5 +1,26 @@
 {
   "nodes": {
+    "mathnix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793653705,
+        "narHash": "sha256-SkJyNjW0BFMPIM+rY8H8UI58K4NNrAGnyrR32xOxhIg=",
+        "owner": "flakesonnix",
+        "repo": "mathnix",
+        "rev": "dd876ac43a1fa08e9c10707905369c671605db04",
+        "type": "github"
+      },
+      "original": {
+        "owner": "flakesonnix",
+        "repo": "mathnix",
+        "rev": "dd876ac43a1fa08e9c10707905369c671605db04",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1776255774,
@@ -37,6 +58,7 @@
     },
     "root": {
       "inputs": {
+        "mathnix": "mathnix",
         "nixpkgs": [
           "nixray",
           "nixpkgs"

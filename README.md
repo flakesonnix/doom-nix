@@ -2,8 +2,10 @@
 
 A Nix game engine targeting the **original Doom 1.9 shareware IWAD**, using
 [nixray](https://github.com/flakesonnix/nixray) for native graphics, input, and
-audio. The earlier custom three-map raycaster has been replaced with the
-original nine-map episode and a WAD/sector/BSP-based implementation.
+audio, and [mathnix](https://github.com/flakesonnix/mathnix) for native numerical
+operations. Both plugins use the same pinned Nix evaluator. The earlier custom
+three-map raycaster has been replaced with the original nine-map episode and a
+WAD/sector/BSP-based implementation.
 
 **This is not yet a one-to-one Doom port.** Original map and asset data are used,
 but gameplay compatibility is incomplete. In particular:
@@ -33,6 +35,8 @@ extracts `DOOM1.WAD` without executing the DOS installer, and checks the IWAD's
 SHA-256 too. No registered/commercial IWAD is downloaded or required.
 The first music build also downloads the FluidR3 soundfont and synthesizes the
 scores; subsequent launches use cached, streamed audio.
+Artwork and geometry are decoded inside a cached build, not during each
+`nix run` flake evaluation. Use `nix run -L .` to see first-build progress.
 
 ```sh
 nix run . -- --arg audio false
@@ -76,11 +80,13 @@ textured geometry. Simulation, weapon states, damage, pickups, triggers,
 sector movers, sprites, HUD composition, and input handling are Nix.
 `vanilla/mus.nix` decodes the original music events, velocities, channel and
 controller mappings, and 140 Hz timing into MIDI, also entirely in Nix.
+Trigonometry, square roots, distances, and sprite-facing angles call mathnix;
+there are no hand-written Taylor/Newton approximations in the game.
 
 Native tools provide infrastructure only: unzip extracts the distribution,
-`od` transports binary bytes as hex, `printf` writes Nix-computed image/sound
-bytes, ImageMagick losslessly serializes the decoded images as PNG, and nixray
-loads/draws assets and plays audio. No C Doom engine, DOS emulator, JavaScript
+`od` transports binary bytes as hex, generic Python/`printf` writers serialize
+Nix-computed image/sound bytes, ImageMagick serializes decoded images as PNG,
+and nixray loads/draws assets and plays audio. No C Doom engine, DOS emulator, JavaScript
 game, or Python game implementation is launched.
 FluidSynth supplies generic General MIDI synthesis at build time; FFmpeg
 encodes the resulting PCM as Vorbis for nixray's streaming music API. Title,

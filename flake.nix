@@ -2,27 +2,38 @@
   description = "A WAD-backed Nix port targeting Doom 1.9 shareware, using nixray";
   inputs = {
     nixray.url = "github:flakesonnix/nixray/b4b6a26d1b7ac1d9d9963d294db9174f7a276087";
+    mathnix.url = "github:flakesonnix/mathnix/dd876ac43a1fa08e9c10707905369c671605db04";
+    mathnix.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.follows = "nixray/nixpkgs";
   };
-  outputs = { self, nixray, nixpkgs }:
+  outputs = { self, nixray, mathnix, nixpkgs }:
     let
       eachSystem = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ];
       forSystem = system:
         let
           pkgs = import nixpkgs { inherit system; };
           runtime = nixray.packages.${system}.default;
+          math = pkgs.callPackage "${mathnix}/package.nix" { nixComponents = runtime.nixComponents; };
+          runner = pkgs.writeShellApplication {
+            name = "doom-nixray";
+            text = ''
+              exec ${runtime}/bin/nixray "$@" --option plugin-files \
+                '${runtime}/lib/nix/plugins/nixray.so ${math}/lib/nix/plugins/mathnix.so'
+            '';
+          };
           iwad = pkgs.callPackage ./vanilla/iwad.nix {};
-          original = import ./vanilla/assets.nix { inherit pkgs iwad; };
+          original = import ./vanilla/assets.nix { inherit pkgs iwad math; src = self; nixComponents = runtime.nixComponents; };
           music = import ./vanilla/music.nix { inherit pkgs iwad; };
           doom = pkgs.writeShellApplication {
             name = "doom-nix";
             text = ''
-              exec ${runtime}/bin/nixray ${self}/vanilla/doom.nix --arg ray 'import ${nixray}/lib' \
+              echo 'Starting Doom / Nix (Enter opens the skill menu; Enter again starts).' >&2
+              exec ${runner}/bin/doom-nixray ${self}/vanilla/doom.nix --arg ray 'import ${nixray}/lib' \
                 --argstr iwad ${iwad} --argstr assets ${original.package} --argstr music ${music.package} "$@"
             '';
             meta.description = "Play the Doom shareware maps with a Nix game engine";
           };
-        in { inherit pkgs runtime doom iwad original music; };
+        in { inherit pkgs runtime runner math doom iwad original music; };
     in {
       packages = eachSystem (system: {
         default = (forSystem system).doom;
@@ -30,6 +41,7 @@
         iwad = (forSystem system).iwad;
         assets = (forSystem system).original.package;
         music = (forSystem system).music.package;
+        runtime = (forSystem system).runner;
       });
       apps = eachSystem (system: {
         default = { type = "app"; program = "${self.packages.${system}.default}/bin/doom-nix";
@@ -37,7 +49,7 @@
       });
       checks = eachSystem (system:
         let
-          inherit (forSystem system) pkgs runtime doom iwad original music;
+          inherit (forSystem system) pkgs runtime runner math doom iwad original music;
           audioProbe = pkgs.runCommand "doom-audio-probe.so" {
             nativeBuildInputs = [ pkgs.stdenv.cc pkgs.pkg-config ];
             buildInputs = [ pkgs.raylib ];
@@ -50,7 +62,8 @@
             nativeBuildInputs = [ runtime.nixComponents.nix-cli ];
           } ''
             export HOME="$TMPDIR"
-            nix-instantiate --eval --strict --json ${self}/tests/vanilla.nix --argstr iwad ${iwad} > "$out"
+            nix-instantiate --option plugin-files ${math}/lib/nix/plugins/mathnix.so \
+              --eval --strict --json ${self}/tests/vanilla.nix --argstr iwad ${iwad} > "$out"
           '';
           runtime = pkgs.runCommand "doom-nix-runtime-tests" {
             nativeBuildInputs = [ pkgs.xvfb-run pkgs.python3 ];
@@ -74,15 +87,15 @@
             export PIPEWIRE_REMOTE=doom-no-pipewire
             export JACK_NO_START_SERVER=1
             xvfb-run -a -s '-screen 0 1280x800x24 -noreset' \
-              timeout -k 5s 120s ${runtime}/bin/nixray ${self}/tests/vanilla-runtime.nix --arg ray 'import ${nixray}/lib' \
+              timeout -k 5s 120s ${runner}/bin/doom-nixray ${self}/tests/vanilla-runtime.nix --arg ray 'import ${nixray}/lib' \
                 --argstr iwad ${iwad} --argstr assets ${original.package} > "$out"
             xvfb-run -a -s '-screen 0 1280x800x24 -noreset' \
               env LD_PRELOAD=${audioProbe} NIXRAY_TEST_AUDIO_CAPTURE="$TMPDIR/effects.f32" \
-              timeout -k 5s 60s ${runtime}/bin/nixray ${self}/tests/vanilla-audio.nix --arg ray 'import ${nixray}/lib' \
+              timeout -k 5s 60s ${runner}/bin/doom-nixray ${self}/tests/vanilla-audio.nix --arg ray 'import ${nixray}/lib' \
                 --argstr assets ${original.package} > "$TMPDIR/audio.json"
             xvfb-run -a -s '-screen 0 1280x800x24 -noreset' \
               env LD_PRELOAD=${audioProbe} NIXRAY_TEST_AUDIO_CAPTURE="$TMPDIR/music.f32" \
-              timeout -k 5s 60s ${runtime}/bin/nixray ${self}/tests/vanilla-audio.nix --arg ray 'import ${nixray}/lib' \
+              timeout -k 5s 60s ${runner}/bin/doom-nixray ${self}/tests/vanilla-audio.nix --arg ray 'import ${nixray}/lib' \
                 --argstr assets ${original.package} --argstr iwad ${iwad} --argstr music ${music.package} \
                 --argstr mode music > "$TMPDIR/music.json"
             python - "$TMPDIR/effects.f32" "$TMPDIR/music.f32" <<'PY'
@@ -101,7 +114,7 @@
           '';
         });
       devShells = eachSystem (system:
-        let inherit (forSystem system) pkgs runtime;
-        in { default = pkgs.mkShell { packages = [ runtime pkgs.xvfb-run pkgs.nixfmt ]; }; });
+        let inherit (forSystem system) pkgs runner math;
+        in { default = pkgs.mkShell { packages = [ runner math pkgs.xvfb-run pkgs.nixfmt ]; }; });
     };
 }
