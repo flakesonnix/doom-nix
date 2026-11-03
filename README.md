@@ -82,6 +82,8 @@ sector movers, sprites, HUD composition, and input handling are Nix.
 controller mappings, and 140 Hz timing into MIDI, also entirely in Nix.
 Trigonometry, square roots, distances, and sprite-facing angles call mathnix;
 there are no hand-written Taylor/Newton approximations in the game.
+Bounds, remainders, and angle wrapping also use mathnix. Thin type adapters
+preserve integer indices and exact 64-bit bounds.
 
 Native tools provide infrastructure only: unzip extracts the distribution,
 `od` transports binary bytes as hex, generic Python/`printf` writers serialize

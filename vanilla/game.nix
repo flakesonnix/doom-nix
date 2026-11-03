@@ -5,7 +5,7 @@ let
   rules = import ./rules.nix;
   geometry = import ./geometry.nix { inherit wad; };
   inherit (m) min max clamp;
-  mod = a: b: a - builtins.div a b * b;
+  mod = m.mod;
   fixed = x: builtins.floor (x * 65536) / 65536.0;
   currentMap = s: builtins.elemAt wad.maps s.level;
   random = s: let index = mod (s.rng + 1) 256;

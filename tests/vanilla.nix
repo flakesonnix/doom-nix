@@ -52,6 +52,15 @@ let
     mathnixProvidesAtan2 = near (m.atan2 1 0) (m.pi / 2) && near (m.atan2 0 (-1)) m.pi;
     mathnixHypotAvoidsOverflow = m.length 1.0e200 1.0e200 > 1.0e200;
     integerBoundsKeepTheirTypes = builtins.isInt (m.clamp 0 4 8) && builtins.isInt (m.min 0 2);
+    mathnixBoundsMatchNative = m.min 2.5 3 == builtins.math.min 2.5 3
+      && m.max (-2.5) 3 == builtins.math.max (-2.5) 3 && m.clamp 0.0 1.0 2 == builtins.math.clamp 0.0 1.0 2;
+    integerBoundsRemainExactAboveBinary64 = m.min 9007199254740993 9007199254740992 == 9007199254740992
+      && m.max 9007199254740993 9007199254740992 == 9007199254740993
+      && m.clamp 0 9007199254740993 9007199254740993 == 9007199254740993;
+    mathnixIntegerModuloIsEuclidean = m.mod (-1) 8 == 7 && builtins.isInt (m.mod 9 8);
+    mathnixFloatModuloIsEuclidean = near (m.mod (-1.5) 8) 6.5 && near (m.mod 9.5 8) 1.5;
+    mathnixWrapUsesHalfOpenInterval = near (m.wrap m.pi) (-m.pi) && near (m.wrap (-m.pi)) (-m.pi)
+      && near (m.wrap (3 * m.pi)) (-m.pi) && near (m.wrap 0) 0;
     originalIwadSize = wad.b.size == 4196020;
     originalDirectory = builtins.length wad.directory == 1264;
     originalAllNineMaps = builtins.map (x: x.name) wad.maps == [ "E1M1" "E1M2" "E1M3" "E1M4" "E1M5" "E1M6" "E1M7" "E1M8" "E1M9" ];
