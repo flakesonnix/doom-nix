@@ -124,7 +124,7 @@ let
     victoryRestartReloadsFirstMapAssets = let resumed = game.step (playing // { phase = "victory"; level = 7; }) { start = true; };
       in resumed.level == 0 && resumed.phase == "loading";
     stateIsJsonSerializable = builtins.stringLength (builtins.toJSON movement) > 0;
-  };
+  } // import ./mus.nix { inherit wad; };
   failed = builtins.filter (name: !checks.${name}) (builtins.attrNames checks);
 in if failed != [] then throw "Doom shareware tests failed: ${builtins.concatStringsSep ", " failed}"
 else { passed = builtins.length (builtins.attrNames checks); tests = builtins.attrNames checks; }

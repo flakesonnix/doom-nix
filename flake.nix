@@ -13,28 +13,38 @@
           runtime = nixray.packages.${system}.default;
           iwad = pkgs.callPackage ./vanilla/iwad.nix {};
           original = import ./vanilla/assets.nix { inherit pkgs iwad; };
+          music = import ./vanilla/music.nix { inherit pkgs iwad; };
           doom = pkgs.writeShellApplication {
             name = "doom-nix";
             text = ''
               exec ${runtime}/bin/nixray ${self}/vanilla/doom.nix --arg ray 'import ${nixray}/lib' \
-                --argstr iwad ${iwad} --argstr assets ${original.package} "$@"
+                --argstr iwad ${iwad} --argstr assets ${original.package} --argstr music ${music.package} "$@"
             '';
             meta.description = "Play the Doom shareware maps with a Nix game engine";
           };
-        in { inherit pkgs runtime doom iwad original; };
+        in { inherit pkgs runtime doom iwad original music; };
     in {
       packages = eachSystem (system: {
         default = (forSystem system).doom;
         doom-nix = (forSystem system).doom;
         iwad = (forSystem system).iwad;
         assets = (forSystem system).original.package;
+        music = (forSystem system).music.package;
       });
       apps = eachSystem (system: {
         default = { type = "app"; program = "${self.packages.${system}.default}/bin/doom-nix";
           meta.description = "DOOM / NIX"; };
       });
       checks = eachSystem (system:
-        let inherit (forSystem system) pkgs runtime doom iwad original;
+        let
+          inherit (forSystem system) pkgs runtime doom iwad original music;
+          audioProbe = pkgs.runCommand "doom-audio-probe.so" {
+            nativeBuildInputs = [ pkgs.stdenv.cc pkgs.pkg-config ];
+            buildInputs = [ pkgs.raylib ];
+          } ''
+            $CXX -std=c++17 -shared -fPIC ${nixray}/tests/audio.cc \
+              $(pkg-config --cflags --libs raylib) -ldl -o "$out"
+          '';
         in {
           logic = pkgs.runCommand "doom-nix-logic-tests" {
             nativeBuildInputs = [ runtime.nixComponents.nix-cli ];
@@ -43,7 +53,7 @@
             nix-instantiate --eval --strict --json ${self}/tests/vanilla.nix --argstr iwad ${iwad} > "$out"
           '';
           runtime = pkgs.runCommand "doom-nix-runtime-tests" {
-            nativeBuildInputs = [ pkgs.xvfb-run ];
+            nativeBuildInputs = [ pkgs.xvfb-run pkgs.python3 ];
           } ''
             export HOME="$TMPDIR/home"
             export XDG_RUNTIME_DIR="$TMPDIR/runtime"
@@ -67,8 +77,24 @@
               timeout -k 5s 120s ${runtime}/bin/nixray ${self}/tests/vanilla-runtime.nix --arg ray 'import ${nixray}/lib' \
                 --argstr iwad ${iwad} --argstr assets ${original.package} > "$out"
             xvfb-run -a -s '-screen 0 1280x800x24 -noreset' \
+              env LD_PRELOAD=${audioProbe} NIXRAY_TEST_AUDIO_CAPTURE="$TMPDIR/effects.f32" \
               timeout -k 5s 60s ${runtime}/bin/nixray ${self}/tests/vanilla-audio.nix --arg ray 'import ${nixray}/lib' \
                 --argstr assets ${original.package} > "$TMPDIR/audio.json"
+            xvfb-run -a -s '-screen 0 1280x800x24 -noreset' \
+              env LD_PRELOAD=${audioProbe} NIXRAY_TEST_AUDIO_CAPTURE="$TMPDIR/music.f32" \
+              timeout -k 5s 60s ${runtime}/bin/nixray ${self}/tests/vanilla-audio.nix --arg ray 'import ${nixray}/lib' \
+                --argstr assets ${original.package} --argstr iwad ${iwad} --argstr music ${music.package} \
+                --argstr mode music > "$TMPDIR/music.json"
+            python - "$TMPDIR/effects.f32" "$TMPDIR/music.f32" <<'PY'
+            import array, math, sys
+            for path in sys.argv[1:]:
+                samples = array.array('f')
+                with open(path, 'rb') as source:
+                    samples.frombytes(source.read())
+                assert len(samples) > 4800, (path, 'no mixed output')
+                assert all(math.isfinite(s) for s in samples), (path, 'nonfinite output')
+                assert max(abs(s) for s in samples) > 0.001, (path, 'silent output')
+            PY
             xvfb-run -a -s '-screen 0 1280x800x24 -noreset' \
               timeout -k 5s 60s ${doom}/bin/doom-nix --arg audio false --arg hidden true --arg maxFrames 3 > "$TMPDIR/launcher.json"
             grep -q '"frames":3' "$TMPDIR/launcher.json"

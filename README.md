@@ -14,8 +14,9 @@ but gameplay compatibility is incomplete. In particular:
 - Enemy decisions, collision details, action ordering, and several specials are
   approximations. Vanilla demo playback and deterministic equivalence are not
   implemented; the episode has not been verified by a complete playthrough.
-- MUS music, original savegames, multiplayer, attract demos, screen wipes, and
-  the complete original menu/intermission behavior are not implemented.
+- Music uses the original MUS scores with FluidR3 General MIDI instruments,
+  not bit-identical DOS OPL synthesis. Original savegames, multiplayer, attract
+  demos, screen wipes, and complete menu/intermission behavior are not implemented.
 - Map transitions recreate the nixray window to load the next map's assets.
   Escape currently quits instead of opening Doom's menu.
 
@@ -30,6 +31,8 @@ Requires Linux, a display, and Nix with flakes. The first build downloads the
 unchanged shareware distribution from the idgames mirror, checks its SHA-256,
 extracts `DOOM1.WAD` without executing the DOS installer, and checks the IWAD's
 SHA-256 too. No registered/commercial IWAD is downloaded or required.
+The first music build also downloads the FluidR3 soundfont and synthesizes the
+scores; subsequent launches use cached, streamed audio.
 
 ```sh
 nix run . -- --arg audio false
@@ -59,7 +62,7 @@ Finite headless runs accept `--arg hidden true --arg maxFrames 3`.
 | Tab | Automap; simulation continues |
 | P | Pause |
 | C | Mouse capture / horizontal mouse look |
-| M | Mute effects |
+| M | Mute music and effects |
 | R | Restart the map with starting inventory |
 | Enter | Continue intermission / retry |
 | Escape | Quit |
@@ -71,12 +74,18 @@ directories, patches, palettes, composite textures, flats, map records, BSP
 nodes, and blockmaps. `vanilla/geometry.nix` clips convex subsectors and produces
 textured geometry. Simulation, weapon states, damage, pickups, triggers,
 sector movers, sprites, HUD composition, and input handling are Nix.
+`vanilla/mus.nix` decodes the original music events, velocities, channel and
+controller mappings, and 140 Hz timing into MIDI, also entirely in Nix.
 
 Native tools provide infrastructure only: unzip extracts the distribution,
 `od` transports binary bytes as hex, `printf` writes Nix-computed image/sound
 bytes, ImageMagick losslessly serializes the decoded images as PNG, and nixray
 loads/draws assets and plays audio. No C Doom engine, DOS emulator, JavaScript
 game, or Python game implementation is launched.
+FluidSynth supplies generic General MIDI synthesis at build time; FFmpeg
+encodes the resulting PCM as Vorbis for nixray's streaming music API. Title,
+map, intermission, and victory tracks start automatically; pause and mute
+preserve their playback position. These tools do not implement gameplay.
 
 The original artwork, maps, sounds, and shareware distribution remain copyright
 id Software and subject to their original terms, **not** the engine's license.
@@ -93,5 +102,7 @@ nix flake check -L
 The checks compare original IWAD dimensions/counts and spawn data, decode
 textures/patches, exercise BSP/collision/35 Hz simulation and gameplay rules,
 load and render all nine maps under Xvfb, verify lossless image/alpha decoding,
-play original effects through a null audio device, and smoke-test the packaged
-launcher. These checks establish the stated coverage, **not** vanilla parity.
+play original effects and all 13 music scores through a null audio device,
+verify non-silent native mixer output, exercise music transitions/pause/mute,
+and smoke-test the packaged launcher. These checks establish the stated
+coverage, **not** vanilla parity.
