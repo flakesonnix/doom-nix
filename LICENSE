@@ -1,0 +1,18 @@
+SPDX-License-Identifier: GPL-2.0-or-later
+
+The Nix engine source in this repository is licensed under the GNU General
+Public License, version 2, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+The complete license terms are available at:
+https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+
+Engine constants and the original gameplay random-number table are based on
+Doom, Copyright (C) 1993-1996 id Software, Inc., released under the GNU GPL.
+
+This license does not cover DOOM1.WAD, the original shareware archive, or assets
+decoded from it. Those remain subject to id Software's original terms. No game
+data is committed to this source repository.

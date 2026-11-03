@@ -1,93 +1,97 @@
-# DOOM / NIX
+# Doom 1.9 shareware / Nix
 
-A playable, Doom-inspired single-player FPS written in **Nix**, using
-[nixray](https://github.com/flakesonnix/nixray) for graphics, input, and audio.
-The raycaster, collision detection, combat, enemy AI, campaign, pixel artwork,
-and sound synthesis are Nix expressions. No C game engine, JavaScript, Python,
-downloaded artwork, or original Doom assets are used.
+A Nix game engine targeting the **original Doom 1.9 shareware IWAD**, using
+[nixray](https://github.com/flakesonnix/nixray) for native graphics, input, and
+audio. The earlier custom three-map raycaster has been replaced with the
+original nine-map episode and a WAD/sector/BSP-based implementation.
 
-**This is an original grid-based game, not a complete reimplementation of id
-Software's Doom.** It does not load WADs or reproduce Doom's BSP renderer, maps,
-physics, multiplayer, or demo format.
+**This is not yet a one-to-one Doom port.** Original map and asset data are used,
+but gameplay compatibility is incomplete. In particular:
 
-## Play
+- Rendering uses textured GPU geometry generated from the original BSP, not
+  Doom's column/visplane software renderer. Lighting, masked surfaces, moving
+  floor side walls, palette flashes, and some texture alignment differ.
+- Enemy decisions, collision details, action ordering, and several specials are
+  approximations. Vanilla demo playback and deterministic equivalence are not
+  implemented; the episode has not been verified by a complete playthrough.
+- MUS music, original savegames, multiplayer, attract demos, screen wipes, and
+  the complete original menu/intermission behavior are not implemented.
+- Map transitions recreate the nixray window to load the next map's assets.
+  Escape currently quits instead of opening Doom's menu.
+
+## Run
 
 ```sh
 cd doom-nix
 nix run .
 ```
 
-Requires Linux, Nix with flakes enabled, and an X11 or Wayland display. The flake
-pins nixray and the matching Nix evaluator together; do not load its plugin into
-an arbitrary system Nix.
+Requires Linux, a display, and Nix with flakes. The first build downloads the
+unchanged shareware distribution from the idgames mirror, checks its SHA-256,
+extracts `DOOM1.WAD` without executing the DOS installer, and checks the IWAD's
+SHA-256 too. No registered/commercial IWAD is downloaded or required.
 
 ```sh
-nix run . -- --arg audio false          # No audio device
-nix run . -- --arg columns 120          # Lower raycasting resolution
-nix run . -- --arg columns 240          # Higher raycasting resolution
-NIXRAY_GRAPHICS=system nix run .         # Use an existing system driver setup
+nix run . -- --arg audio false
+nix run . -- --arg map 3 --arg skill 3 --arg start true
+NIXRAY_GRAPHICS=system nix run .
 nix build
 ./result/bin/doom-nix
 ```
 
-The default is 160 ray columns in a 960×640 window. `columns` must divide 960.
-Nix evaluation and your graphics driver determine the achievable frame rate;
-60 FPS is a target, not a guarantee. State is printed as JSON when you quit.
+`map` is 1–9; `skill` is 0–4. The default starts on the original title screen.
+Press Enter to show the skill menu, select with arrows, and press Enter again.
+The display is 320×200 internally, stretched to 960×720 for Doom's 4:3 aspect.
+Finite headless runs accept `--arg hidden true --arg maxFrames 3`.
 
-### Controls
+## Controls
 
 | Key | Action |
 | --- | --- |
-| Enter / Space | Start, continue, or retry |
-| W/S or Up/Down | Forward/backward |
+| W/S or Up/Down | Forward/back |
 | A/D | Strafe |
-| Left/Right | Turn; select difficulty on the title screen |
+| Left/Right | Turn |
 | Shift | Run |
-| Space / Ctrl / left click | Fire (hold for automatic fire) |
-| E | Use a nearby door or exit terminal |
-| 1/2/3/4 | Fist / pistol / shotgun / chaingun |
-| C | Toggle mouse capture and horizontal mouse look |
-| Tab | Automap (the game keeps running) |
-| P | Pause/resume |
-| R | Restart the current sector |
-| M | Mute/unmute effects |
+| Ctrl / left mouse | Fire |
+| Space / E | Use doors and switches |
+| 1 | Fist / chainsaw |
+| 2/3/4/5 | Pistol / shotgun / chaingun / rocket launcher |
+| Tab | Automap; simulation continues |
+| P | Pause |
+| C | Mouse capture / horizontal mouse look |
+| M | Mute effects |
+| R | Restart the map with starting inventory |
+| Enter | Continue intermission / retry |
 | Escape | Quit |
 
-### Campaign
+## What is Nix
 
-Three sectors: **The Derivation**, **Impure Evaluation**, and **Garbage Collector**.
-Find the red keycard, open the red-striped door, and use the green exit terminal.
-The final sector requires killing both barons before the exit releases.
+`vanilla/binary.nix` and `vanilla/wad.nix` decode little-endian structures, lump
+directories, patches, palettes, composite textures, flats, map records, BSP
+nodes, and blockmaps. `vanilla/geometry.nix` clips convex subsectors and produces
+textured geometry. Simulation, weapon states, damage, pickups, triggers,
+sector movers, sprites, HUD composition, and input handling are Nix.
 
-- Guards use hitscan attacks; imps and barons throw dodgeable fireballs.
-- Shotguns fire seven individual pellets; enemies and walls block shots.
-- Medkits restore health; armor absorbs half of incoming damage.
-- Green sludge hurts over time. Keep moving and use cover.
-- Each sector contains a disguised secret door. Use suspicious metal walls.
-- Weapons, ammunition, health, and armor carry between sectors; keycards do not.
-- Retrying resets that sector's inventory and stats. There is no save system.
-- Artwork and nine sound effects are generated from Nix. The build's shell code
-  only serializes the Nix-computed WAV bytes and launches nixray.
+Native tools provide infrastructure only: unzip extracts the distribution,
+`od` transports binary bytes as hex, `printf` writes Nix-computed image/sound
+bytes, ImageMagick losslessly serializes the decoded images as PNG, and nixray
+loads/draws assets and plays audio. No C Doom engine, DOS emulator, JavaScript
+game, or Python game implementation is launched.
 
-## Tests
+The original artwork, maps, sounds, and shareware distribution remain copyright
+id Software and subject to their original terms, **not** the engine's license.
+The data derivation retains the original archive and its README. Engine rule
+constants and the deterministic random table are based on id Software's
+GPL-released Doom sources; see `LICENSE`.
+
+## Verify
 
 ```sh
-nix-instantiate --eval --strict --json tests/default.nix
 nix flake check -L
 ```
 
-The pure suite covers map reachability and key gating, ray intersections,
-collision, movement, all weapons, pickups, damage, AI, projectiles, campaign
-transitions, controls, and every generated artwork pixel. The flake also runs
-real rendering under Xvfb across title/game/pause/death/intermission/victory,
-all maps, automap, gun effects, and moving doors, plus a packaged launcher/audio
-smoke test with a null audio device.
-
-For local development beside the existing `../nixray` checkout:
-
-```sh
-../nixray/result/bin/nixray doom.nix
-```
-
-That direct command defaults to no audio assets. The packaged launcher supplies
-the generated sound directory automatically.
+The checks compare original IWAD dimensions/counts and spawn data, decode
+textures/patches, exercise BSP/collision/35 Hz simulation and gameplay rules,
+load and render all nine maps under Xvfb, verify lossless image/alpha decoding,
+play original effects through a null audio device, and smoke-test the packaged
+launcher. These checks establish the stated coverage, **not** vanilla parity.
